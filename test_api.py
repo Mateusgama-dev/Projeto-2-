@@ -97,7 +97,7 @@ def test_listar_imovel_com_dados(mock_conectar_banco, client):
 
 
 @patch("api.conectar_banco")
-def imovel_invalido(mock_conectar_banco, client): 
+def listar_imovel_invalido(mock_conectar_banco, client): 
 
     mock_conn = MagicMock()
     
@@ -112,6 +112,42 @@ def imovel_invalido(mock_conectar_banco, client):
     response = client.get("/tarefa/999")
 
     assert response.status_code == 404
+
+@patch("api.conectar_banco")
+def test_criar_imovel_ok(mock_conectar_banco, client):
+    """POST /imoveis - cria contato com sucesso."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    # Simula ID gerado pelo banco
+    mock_cursor.lastrowid = 10
+
+    mock_conectar_banco.return_value = mock_conn
+
+    payload = {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
+    response = client.post("/imoveis", json=payload)
+
+    assert response.status_code == 201
+    assert response.get_json() == {"id": 10}
+
+    mock_cursor.execute.assert_called_once_with(
+        "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("Rua Azevedo", "Santa Maria", "Santos", "119876","casa","350000","22/07/2020"),
+    )
+    mock_conn.commit.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+@patch("api.conectar_banco")
+def test_criar_imovel_erro_validacao(mock_conectar_banco, client):
+    """POST /imoveis - falta campo obrigatório -> 400. Não deve acessar o banco."""
+    response = client.post("/imoveis", json={"logradouro": "Rua Santos"})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"erro": "Campos obrigatórios: logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao"}
+
+    mock_conectar_banco.assert_not_called()
 
 @patch("api.conectar_banco")
 def deletar_imoveis(mock_conectar_banco, client): 
