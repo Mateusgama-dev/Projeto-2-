@@ -28,7 +28,7 @@ def test_listar_imoveis_vazio(mock_conectar_banco, client):
     assert response.get_json() == []
 
     mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM tbl_imoveis"
+        "SELECT * FROM imoveis"
     )
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
@@ -58,7 +58,7 @@ def test_listar_imoveis_com_dados(mock_conectar_banco, client):
     ]
 
     mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM tbl_imoveis" 
+        "SELECT * FROM imoveis" 
     )
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
@@ -88,7 +88,7 @@ def test_listar_imovel_com_dados(mock_conectar_banco, client):
  
 
     mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM tbl_imoveis WHERE id = ?" , (id,) 
+        "SELECT * FROM imoveis WHERE id = ?" , (id,) 
     )
 
     mock_cursor.fetchone.assert_called_once()
@@ -114,6 +114,81 @@ def imovel_invalido(mock_conectar_banco, client):
     assert response.status_code == 404
 
 @patch("api.conectar_banco")
-def deletar_imoveis(mock_conectar_banco, client): 
-    pass
+def test_deletar_contato_ok(mock_conectar_banco, client):
+    """DELETE /contacts/<id> - deleta com sucesso."""
+
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_cursor.rowcount = 1
+    mock_conectar_banco.return_value = mock_conn
+
+    response = client.delete("/imoveis/1")
+
+    assert response.status_code == 200
+
+    mock_cursor.execute.assert_called_once_with(
+        "DELETE FROM imoveis WHERE id = ?",
+        (1,),
+    )
+    mock_conn.commit.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+@patch("api.conectar_banco")
+def test_deletar_contato_not_found(mock_conectar_banco, client):
+
+    """DELETE /contacts/<id> - contato não encontrado."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_cursor.rowcount = 0
+    mock_conectar_banco.return_value = mock_conn
+
+    response = client.delete("/contacts/999")
+
+    assert response.status_code == 404
+
+    mock_cursor.execute.assert_called_once_with(
+        "DELETE FROM imoveis WHERE id = ?",
+        (999,),
+    )
+    mock_conn.commit.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+
+
+@patch("api.conectar_banco")
+def test_atualizar_imoveis_ok(mock_conectar_banco, client):
+    
+    """PUT /contacts/<id> - atualiza com sucesso."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_cursor.rowcount = 1
+    mock_conectar_banco.return_value = mock_conn
+
+    payload = {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
+    response = client.put("/contacts/1", json=payload)
+
+    assert response.status_code == 200
+
+    mock_cursor.execute.assert_called_once_with("UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?" , (
+    "x",
+    "Conceição",
+    "Osasco",
+    "278383",
+    "casa",
+    "20000",
+    "13/04/2002",
+    1,
+)
+    )
+    mock_conn.commit.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
 
