@@ -228,6 +228,41 @@ def test_atualizar_imoveis_ok(mock_conectar_banco, client):
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
+@patch("api.conectar_banco")
+def test_atualizar_imovel_not_found(mock_conectar_banco, client):
+    """PUT /imoveis/<id> - imovel não encontrado (rowcount=0)."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_cursor.rowcount = 0
+    mock_conectar_banco.return_value = mock_conn
+
+    payload = {"logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
+    response = client.put("/imoveis/999", json=payload)
+
+    assert response.status_code == 404
+    assert response.get_json() == {"erro": "Imovel não encontrado"}
+
+    mock_cursor.execute.assert_called_once_with(
+        "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?",
+        ("x", "Conceição", "Osasco", "278383", "casa","20000", "13/04/2002", 999),
+    )
+    mock_conn.commit.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+
+@patch("api.conectar_banco")
+def test_atualizar_imovel_erro_validacao(mock_conectar_banco, client):
+    """PUT /imoveis/<id> - falta campo obrigatório -> 400. Não deve acessar o banco."""
+    response = client.put("/imoveis/1", json={"logradouro": "Rua Silva"})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"erro": "Campos obrigatórios: logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao"}
+
+    mock_conectar_banco.assert_not_called()
+
 @pytest.mark.parametrize("tipo", ["casa", "apartamento", "terreno",])
 @patch("api.conectar_banco")
 def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
@@ -252,7 +287,7 @@ def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
     ]
 
     mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM tbl_imoveis WHERE tipo = ?", (tipo,)
+        "SELECT * FROM imoveis WHERE tipo = ?", (tipo,)
     )
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
@@ -283,7 +318,7 @@ def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
     ]
 
     mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM tbl_imoveis WHERE cidade = ?", (cidade,)
+        "SELECT * FROM imoveis WHERE cidade = ?", (cidade,)
     )
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
