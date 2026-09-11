@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import sqlite3
+from conexao import load_dotenv , conectar_banco
 
 app = Flask(__name__)
 
@@ -8,30 +9,9 @@ DB_PATH = "imoveis.db"
 
 def conectar_banco():
     """Abre uma conexão com o banco de dados de imóveis."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = conectar_banco()
     return conn
 
-
-def criar_tabela_se_nao_existir():
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS imoveis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            logradouro TEXT NOT NULL,
-            bairro TEXT NOT NULL,
-            cidade TEXT NOT NULL,
-            cep TEXT NOT NULL,
-            tipo TEXT NOT NULL,
-            valor TEXT NOT NULL,
-            data_aquisicao TEXT NOT NULL
-        )
-        """
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
 
 
 CAMPOS_IMOVEL = ["logradouro", "bairro", "cidade", "cep", "tipo", "valor", "data_aquisicao"]
@@ -149,5 +129,4 @@ def deletar_imovel(id):
 
 
 if __name__ == "__main__":
-    criar_tabela_se_nao_existir()
     app.run(debug=True)
