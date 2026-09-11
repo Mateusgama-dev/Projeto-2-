@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-
+from api import app
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def client():
 
 @patch("api.conectar_banco")
 def test_listar_imoveis_vazio(mock_conectar_banco, client):
-    """GET /contacts - lista vazia."""
+    """GET /imoveis - lista vazia."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
 
@@ -27,9 +27,7 @@ def test_listar_imoveis_vazio(mock_conectar_banco, client):
     assert response.status_code == 200
     assert response.get_json() == []
 
-    mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM imoveis"
-    )
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis")
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
@@ -53,79 +51,64 @@ def test_listar_imoveis_com_dados(mock_conectar_banco, client):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"},
-        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep":"374689","tipo":"AP", "valor":"3000000", "data_aquisicao":"20/08/2009"},
+        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"},
+        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": "AP", "valor": "3000000", "data_aquisicao": "20/08/2009"},
     ]
 
-    mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM imoveis" 
-    )
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis")
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
 
-
 @patch("api.conectar_banco")
 def test_listar_imovel_com_dados(mock_conectar_banco, client):
-
-    """GET /imoveis<int:id> - lista com dados."""
-
+    """GET /imoveis/<int:id> - imóvel existe."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
 
     mock_conectar_banco.return_value = mock_conn
-
     mock_conn.cursor.return_value = mock_cursor
-    mock_cursor.fetchone.return_value = (1, "x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002"),
-        
+    mock_cursor.fetchone.return_value = (1, "x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002")
 
     response = client.get("/imoveis/1")
 
     assert response.status_code == 200
+    assert response.get_json() == {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"}
 
-    assert response.get_json() == {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
- 
-
-    mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM imoveis WHERE id = ?" , (id,) 
-    )
-
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE id = ?", (1,))
     mock_cursor.fetchone.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
 
 @patch("api.conectar_banco")
-def listar_imovel_invalido(mock_conectar_banco, client): 
-
+def test_listar_imovel_invalido(mock_conectar_banco, client):
+    """GET /imoveis/<int:id> - imóvel não existe."""
     mock_conn = MagicMock()
-    
     mock_cursor = MagicMock()
 
-    mock_conectar_banco.return_value = mock_conn 
-
+    mock_conectar_banco.return_value = mock_conn
     mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = None
 
-    mock_cursor.fetchone.return_value = []
-
-    response = client.get("/tarefa/999")
+    response = client.get("/imoveis/999")
 
     assert response.status_code == 404
+    assert response.get_json() == {"erro": "Imóvel não encontrado"}
+
 
 @patch("api.conectar_banco")
 def test_criar_imovel_ok(mock_conectar_banco, client):
-    """POST /imoveis - cria contato com sucesso."""
+    """POST /imoveis - cria imóvel com sucesso."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
 
-    # Simula ID gerado pelo banco
     mock_cursor.lastrowid = 10
-
     mock_conectar_banco.return_value = mock_conn
 
-    payload = {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
+    payload = {"logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"}
     response = client.post("/imoveis", json=payload)
 
     assert response.status_code == 201
@@ -133,11 +116,12 @@ def test_criar_imovel_ok(mock_conectar_banco, client):
 
     mock_cursor.execute.assert_called_once_with(
         "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ("Rua Azevedo", "Santa Maria", "Santos", "119876","casa","350000","22/07/2020"),
+        ("x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002"),
     )
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
+
 
 @patch("api.conectar_banco")
 def test_criar_imovel_erro_validacao(mock_conectar_banco, client):
@@ -149,10 +133,10 @@ def test_criar_imovel_erro_validacao(mock_conectar_banco, client):
 
     mock_conectar_banco.assert_not_called()
 
-@patch("api.conectar_banco")
-def test_deletar_contato_ok(mock_conectar_banco, client):
-    """DELETE /contacts/<id> - deleta com sucesso."""
 
+@patch("api.conectar_banco")
+def test_deletar_imovel_ok(mock_conectar_banco, client):
+    """DELETE /imoveis/<id> - deleta com sucesso."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -164,18 +148,15 @@ def test_deletar_contato_ok(mock_conectar_banco, client):
 
     assert response.status_code == 200
 
-    mock_cursor.execute.assert_called_once_with(
-        "DELETE FROM imoveis WHERE id = ?",
-        (1,),
-    )
+    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = ?", (1,))
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
-@patch("api.conectar_banco")
-def test_deletar_contato_not_found(mock_conectar_banco, client):
 
-    """DELETE /contacts/<id> - contato não encontrado."""
+@patch("api.conectar_banco")
+def test_deletar_imovel_not_found(mock_conectar_banco, client):
+    """DELETE /imoveis/<id> - imóvel não encontrado."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -183,24 +164,19 @@ def test_deletar_contato_not_found(mock_conectar_banco, client):
     mock_cursor.rowcount = 0
     mock_conectar_banco.return_value = mock_conn
 
-    response = client.delete("/contacts/999")
+    response = client.delete("/imoveis/999")
 
     assert response.status_code == 404
 
-    mock_cursor.execute.assert_called_once_with(
-        "DELETE FROM imoveis WHERE id = ?",
-        (999,),
-    )
+    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = ?", (999,))
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
 
-
 @patch("api.conectar_banco")
 def test_atualizar_imoveis_ok(mock_conectar_banco, client):
-    
-    """PUT /contacts/<id> - atualiza com sucesso."""
+    """PUT /imoveis/<id> - atualiza com sucesso."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -208,21 +184,14 @@ def test_atualizar_imoveis_ok(mock_conectar_banco, client):
     mock_cursor.rowcount = 1
     mock_conectar_banco.return_value = mock_conn
 
-    payload = {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"}
-    response = client.put("/contacts/1", json=payload)
+    payload = {"logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"}
+    response = client.put("/imoveis/1", json=payload)
 
     assert response.status_code == 200
 
-    mock_cursor.execute.assert_called_once_with("UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?" , (
-    "x",
-    "Conceição",
-    "Osasco",
-    "278383",
-    "casa",
-    "20000",
-    "13/04/2002",
-    1,
-)
+    mock_cursor.execute.assert_called_once_with(
+        "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?",
+        ("x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002", 1),
     )
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
@@ -242,7 +211,7 @@ def test_atualizar_imovel_not_found(mock_conectar_banco, client):
     response = client.put("/imoveis/999", json=payload)
 
     assert response.status_code == 404
-    assert response.get_json() == {"erro": "Imovel não encontrado"}
+    assert response.get_json() == {"erro": "Imóvel não encontrado"}
 
     mock_cursor.execute.assert_called_once_with(
         "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?",
@@ -263,7 +232,8 @@ def test_atualizar_imovel_erro_validacao(mock_conectar_banco, client):
 
     mock_conectar_banco.assert_not_called()
 
-@pytest.mark.parametrize("tipo", ["casa", "apartamento", "terreno",])
+
+@pytest.mark.parametrize("tipo", ["casa", "apartamento", "terreno"])
 @patch("api.conectar_banco")
 def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
     """GET /imoveis?tipo=<tipo> - retorna somente imóveis do tipo <tipo>."""
@@ -282,19 +252,17 @@ def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":tipo, "valor":"20000", "data_aquisicao":"13/04/2002"},
-        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep":"374689","tipo":tipo, "valor":"3000000", "data_aquisicao":"20/08/2009"},
+        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": tipo, "valor": "20000", "data_aquisicao": "13/04/2002"},
+        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": tipo, "valor": "3000000", "data_aquisicao": "20/08/2009"},
     ]
 
-    mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM imoveis WHERE tipo = ?", (tipo,)
-    )
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE tipo = ?", (tipo,))
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
 
-@pytest.mark.parametrize("cidade", ["Osasco", "São Paulo", "Campinas",])
+@pytest.mark.parametrize("cidade", ["Osasco", "São Paulo", "Campinas"])
 @patch("api.conectar_banco")
 def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
     """GET /imoveis?cidade=<x> - retorna somente imóveis da cidade x."""
@@ -313,13 +281,11 @@ def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": cidade, "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"},
-        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": cidade, "cep":"374689","tipo":"casa", "valor":"3000000", "data_aquisicao":"20/08/2009"},
+        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": cidade, "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"},
+        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": cidade, "cep": "374689", "tipo": "casa", "valor": "3000000", "data_aquisicao": "20/08/2009"},
     ]
 
-    mock_cursor.execute.assert_called_once_with(
-        "SELECT * FROM imoveis WHERE cidade = ?", (cidade,)
-    )
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE cidade = ?", (cidade,))
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
