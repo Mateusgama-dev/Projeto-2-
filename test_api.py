@@ -153,3 +153,63 @@ def test_criar_imovel_erro_validacao(mock_conectar_banco, client):
 def deletar_imoveis(mock_conectar_banco, client): 
     pass
 
+@pytest.mark.parametrize("tipo", ["casa", "apartamento", "terreno",])
+@patch("api.conectar_banco")
+def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
+    """GET /imoveis?tipo=<tipo> - retorna somente imóveis do tipo <tipo>."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = [
+        (1, "x", "Conceição", "Osasco", "278383", tipo, "20000", "13/04/2002"),
+        (2, "y", "Marina", "São Paulo", "374689", tipo, "3000000", "20/08/2009"),
+    ]
+
+    mock_conectar_banco.return_value = mock_conn
+
+    response = client.get(f"/imoveis?tipo={tipo}")
+
+    assert response.status_code == 200
+    assert response.get_json() == [
+        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383","tipo":tipo, "valor":"20000", "data_aquisicao":"13/04/2002"},
+        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep":"374689","tipo":tipo, "valor":"3000000", "data_aquisicao":"20/08/2009"},
+    ]
+
+    mock_cursor.execute.assert_called_once_with(
+        "SELECT * FROM tbl_imoveis WHERE tipo = ?", (tipo,)
+    )
+    mock_cursor.fetchall.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+
+@pytest.mark.parametrize("cidade", ["Osasco", "São Paulo", "Campinas",])
+@patch("api.conectar_banco")
+def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
+    """GET /imoveis?cidade=<x> - retorna somente imóveis da cidade x."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = [
+        (1, "x", "Conceição", cidade, "278383", "casa", "20000", "13/04/2002"),
+        (2, "y", "Marina", cidade, "374689", "casa", "3000000", "20/08/2009"),
+    ]
+
+    mock_conectar_banco.return_value = mock_conn
+
+    response = client.get(f"/imoveis?cidade={cidade}")
+
+    assert response.status_code == 200
+    assert response.get_json() == [
+        {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": cidade, "cep": "278383","tipo":"casa", "valor":"20000", "data_aquisicao":"13/04/2002"},
+        {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": cidade, "cep":"374689","tipo":"casa", "valor":"3000000", "data_aquisicao":"20/08/2009"},
+    ]
+
+    mock_cursor.execute.assert_called_once_with(
+        "SELECT * FROM tbl_imoveis WHERE cidade = ?", (cidade,)
+    )
+    mock_cursor.fetchall.assert_called_once()
+    mock_cursor.close.assert_called_once()
+    mock_conn.close.assert_called_once()
