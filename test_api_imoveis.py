@@ -76,7 +76,7 @@ def test_listar_imovel_com_dados(mock_conectar_banco, client):
     assert response.status_code == 200
     assert response.get_json() == {"id": 1, "logradouro": "x", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"}
 
-    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE id = ?", (1,))
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE id = %s", (1,))
     mock_cursor.fetchone.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
@@ -115,7 +115,7 @@ def test_criar_imovel_ok(mock_conectar_banco, client):
     assert response.get_json() == {"id": 10}
 
     mock_cursor.execute.assert_called_once_with(
-        "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) VALUES (%s, %s, %s, %s, %s, %s, %s)",
         ("x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002"),
     )
     mock_conn.commit.assert_called_once()
@@ -148,7 +148,7 @@ def test_deletar_imovel_ok(mock_conectar_banco, client):
 
     assert response.status_code == 200
 
-    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = ?", (1,))
+    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = %s", (1,))
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
@@ -168,7 +168,7 @@ def test_deletar_imovel_not_found(mock_conectar_banco, client):
 
     assert response.status_code == 404
 
-    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = ?", (999,))
+    mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = %s", (999,))
     mock_conn.commit.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
@@ -190,7 +190,7 @@ def test_atualizar_imoveis_ok(mock_conectar_banco, client):
     assert response.status_code == 200
 
     mock_cursor.execute.assert_called_once_with(
-        "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?",
+        "UPDATE imoveis SET logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, valor = %s, data_aquisicao = %s WHERE id = %s",
         ("x", "Conceição", "Osasco", "278383", "casa", "20000", "13/04/2002", 1),
     )
     mock_conn.commit.assert_called_once()
@@ -214,7 +214,7 @@ def test_atualizar_imovel_not_found(mock_conectar_banco, client):
     assert response.get_json() == {"erro": "Imóvel não encontrado"}
 
     mock_cursor.execute.assert_called_once_with(
-        "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, valor = ?, data_aquisicao = ? WHERE id = ?",
+        "UPDATE imoveis SET logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, valor = %s, data_aquisicao = %s WHERE id = %s",
         ("x", "Conceição", "Osasco", "278383", "casa","20000", "13/04/2002", 999),
     )
     mock_conn.commit.assert_called_once()
@@ -256,7 +256,7 @@ def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
         {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": tipo, "valor": "3000000", "data_aquisicao": "20/08/2009"},
     ]
 
-    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE tipo = ?", (tipo,))
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE tipo = %s", (tipo,))
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
@@ -285,7 +285,7 @@ def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
         {"id": 2, "logradouro": "y", "bairro": "Marina", "cidade": cidade, "cep": "374689", "tipo": "casa", "valor": "3000000", "data_aquisicao": "20/08/2009"},
     ]
 
-    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE cidade = ?", (cidade,))
+    mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE cidade = %s", (cidade,))
     mock_cursor.fetchall.assert_called_once()
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()

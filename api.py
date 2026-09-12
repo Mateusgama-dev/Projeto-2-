@@ -1,17 +1,7 @@
 from flask import Flask, request, jsonify
-import sqlite3
-from conexao import load_dotenv , conectar_banco
+from conexao import conectar_banco
 
 app = Flask(__name__)
-
-DB_PATH = "imoveis.db"
-
-
-def conectar_banco():
-    """Abre uma conexão com o banco de dados de imóveis."""
-    conn = conectar_banco()
-    return conn
-
 
 
 CAMPOS_IMOVEL = ["logradouro", "bairro", "cidade", "cep", "tipo", "valor", "data_aquisicao"]
@@ -40,9 +30,9 @@ def listar_imoveis():
     cursor = conn.cursor()
 
     if tipo:
-        cursor.execute("SELECT * FROM imoveis WHERE tipo = ?", (tipo,))
+        cursor.execute("SELECT * FROM imoveis WHERE tipo = %s", (tipo,))
     elif cidade:
-        cursor.execute("SELECT * FROM imoveis WHERE cidade = ?", (cidade,))
+        cursor.execute("SELECT * FROM imoveis WHERE cidade = %s", (cidade,))
     else:
         cursor.execute("SELECT * FROM imoveis")
 
@@ -57,7 +47,7 @@ def obter_imovel(id):
     """Retorna um imóvel específico pelo id."""
     conn = conectar_banco()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM imoveis WHERE id = ?", (id,))
+    cursor.execute("SELECT * FROM imoveis WHERE id = %s", (id,))
     row = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -78,7 +68,7 @@ def criar_imovel():
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
         tuple(data[campo] for campo in CAMPOS_IMOVEL),
     )
     conn.commit()
@@ -98,8 +88,8 @@ def atualizar_imovel(id):
     conn = conectar_banco()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE imoveis SET logradouro = ?, bairro = ?, cidade = ?, cep = ?, tipo = ?, "
-        "valor = ?, data_aquisicao = ? WHERE id = ?",
+        "UPDATE imoveis SET logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, "
+        "valor = %s, data_aquisicao = %s WHERE id = %s",
         tuple(data[campo] for campo in CAMPOS_IMOVEL) + (id,),
     )
     conn.commit()
@@ -117,7 +107,7 @@ def deletar_imovel(id):
     """Remove um imóvel pelo id."""
     conn = conectar_banco()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM imoveis WHERE id = ?", (id,))
+    cursor.execute("DELETE FROM imoveis WHERE id = %s", (id,))
     conn.commit()
     encontrado = cursor.rowcount > 0
     cursor.close()
