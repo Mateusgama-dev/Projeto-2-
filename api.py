@@ -4,19 +4,27 @@ from conexao import conectar_banco
 app = Flask(__name__)
 
 
-CAMPOS_IMOVEL = ["logradouro", "bairro", "cidade", "cep", "tipo", "valor", "data_aquisicao"]
-
-
+CAMPOS_IMOVEL = [
+    "logradouro",
+    "tipo_logradouro",
+    "bairro",
+    "cidade",
+    "cep",
+    "tipo",
+    "valor",
+    "data_aquisicao",
+]
 def row_to_imovel_dict(row):
     return {
         "id": row[0],
         "logradouro": row[1],
-        "bairro": row[2],
-        "cidade": row[3],
-        "cep": row[4],
-        "tipo": row[5],
-        "valor": row[6],
-        "data_aquisicao": row[7],
+        "tipo_logradouro": row[2],
+        "bairro": row[3],
+        "cidade": row[4],
+        "cep": row[5],
+        "tipo": row[6],
+        "valor": row[7],
+        "data_aquisicao": row[8],
     }
 
 
@@ -67,8 +75,8 @@ def criar_imovel():
     conn = conectar_banco()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO imoveis (logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        "INSERT INTO imoveis (logradouro, tipo_logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         tuple(data[campo] for campo in CAMPOS_IMOVEL),
     )
     conn.commit()
@@ -88,8 +96,8 @@ def atualizar_imovel(id):
     conn = conectar_banco()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE imoveis SET logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, "
-        "valor = %s, data_aquisicao = %s WHERE id = %s",
+        "UPDATE imoveis SET logradouro = %s, tipo_logradouro = %s, bairro = %s, cidade = %s, "
+        "cep = %s, tipo = %s, valor = %s, data_aquisicao = %s WHERE id = %s",
         tuple(data[campo] for campo in CAMPOS_IMOVEL) + (id,),
     )
     conn.commit()
