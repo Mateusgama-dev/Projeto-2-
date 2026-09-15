@@ -147,6 +147,7 @@ def test_deletar_imovel_ok(mock_conectar_banco, client):
     response = client.delete("/imoveis/1")
 
     assert response.status_code == 200
+    assert response.get_json() == {"mensagem": "Imóvel excluído com sucesso"}
 
     mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = %s", (1,))
     mock_conn.commit.assert_called_once()
@@ -167,6 +168,7 @@ def test_deletar_imovel_not_found(mock_conectar_banco, client):
     response = client.delete("/imoveis/999")
 
     assert response.status_code == 404
+    assert response.get_json() == {"erro": "Imóvel não encontrado"}
 
     mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = %s", (999,))
     mock_conn.commit.assert_called_once()
@@ -188,6 +190,7 @@ def test_atualizar_imoveis_ok(mock_conectar_banco, client):
     response = client.put("/imoveis/1", json=payload)
 
     assert response.status_code == 200
+    assert response.get_json() == {"mensagem": "Imóvel atualizado com sucesso"}
 
     mock_cursor.execute.assert_called_once_with(
         "UPDATE imoveis SET logradouro = %s, tipo_logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, valor = %s, data_aquisicao = %s WHERE id = %s",
