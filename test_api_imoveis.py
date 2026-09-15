@@ -3,12 +3,38 @@ from unittest.mock import patch, MagicMock
 from api import app
 
 
+def links_do_imovel(id):
+    return [
+        {"rel": "self", "href": f"/imoveis/{id}", "method": "GET"},
+        {"rel": "update", "href": f"/imoveis/{id}", "method": "PUT"},
+        {"rel": "delete", "href": f"/imoveis/{id}", "method": "DELETE"},
+        {"rel": "collection", "href": "/imoveis", "method": "GET"},
+    ]
+
+
+def links_da_colecao():
+    return [
+        {"rel": "self", "href": "/imoveis", "method": "GET"},
+        {"rel": "create", "href": "/imoveis", "method": "POST"},
+    ]
+
+
 @pytest.fixture
 def client():
     """Cria um cliente de teste para a API."""
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
+
+
+def test_index_links(client):
+    """GET / - ponto de entrada da API com os links de navegação (HATEOAS)."""
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "links": [{"rel": "self", "href": "/", "method": "GET"}] + links_da_colecao()
+    }
 
 
 @patch("api.conectar_banco")
@@ -51,8 +77,8 @@ def test_listar_imoveis_com_dados(mock_conectar_banco, client):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"},
-        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": "AP", "valor": "3000000", "data_aquisicao": "20/08/2009"},
+        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002", "links": links_do_imovel(1)},
+        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": "AP", "valor": "3000000", "data_aquisicao": "20/08/2009", "links": links_do_imovel(2)},
     ]
 
     mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis")
@@ -74,7 +100,7 @@ def test_listar_imovel_com_dados(mock_conectar_banco, client):
     response = client.get("/imoveis/1")
 
     assert response.status_code == 200
-    assert response.get_json() == {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"}
+    assert response.get_json() == {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002", "links": links_do_imovel(1)}
 
     mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE id = %s", (1,))
     mock_cursor.fetchone.assert_called_once()
@@ -112,7 +138,8 @@ def test_criar_imovel_ok(mock_conectar_banco, client):
     response = client.post("/imoveis", json=payload)
 
     assert response.status_code == 201
-    assert response.get_json() == {"id": 10}
+    assert response.get_json() == {"id": 10, "links": links_do_imovel(10)}
+    assert response.headers["Location"] == "/imoveis/10"
 
     mock_cursor.execute.assert_called_once_with(
         "INSERT INTO imoveis (logradouro, tipo_logradouro, bairro, cidade, cep, tipo, valor, data_aquisicao) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
@@ -147,7 +174,7 @@ def test_deletar_imovel_ok(mock_conectar_banco, client):
     response = client.delete("/imoveis/1")
 
     assert response.status_code == 200
-    assert response.get_json() == {"mensagem": "Imóvel excluído com sucesso"}
+    assert response.get_json() == {"mensagem": "Imóvel excluído com sucesso", "links": links_da_colecao()}
 
     mock_cursor.execute.assert_called_once_with("DELETE FROM imoveis WHERE id = %s", (1,))
     mock_conn.commit.assert_called_once()
@@ -190,7 +217,7 @@ def test_atualizar_imoveis_ok(mock_conectar_banco, client):
     response = client.put("/imoveis/1", json=payload)
 
     assert response.status_code == 200
-    assert response.get_json() == {"mensagem": "Imóvel atualizado com sucesso"}
+    assert response.get_json() == {"mensagem": "Imóvel atualizado com sucesso", "links": links_do_imovel(1)}
 
     mock_cursor.execute.assert_called_once_with(
         "UPDATE imoveis SET logradouro = %s, tipo_logradouro = %s, bairro = %s, cidade = %s, cep = %s, tipo = %s, valor = %s, data_aquisicao = %s WHERE id = %s",
@@ -255,8 +282,8 @@ def test_buscar_imoveis_por_tipo(mock_conectar_banco, client, tipo):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": tipo, "valor": "20000", "data_aquisicao": "13/04/2002"},
-        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": tipo, "valor": "3000000", "data_aquisicao": "20/08/2009"},
+        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": "Osasco", "cep": "278383", "tipo": tipo, "valor": "20000", "data_aquisicao": "13/04/2002", "links": links_do_imovel(1)},
+        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": "São Paulo", "cep": "374689", "tipo": tipo, "valor": "3000000", "data_aquisicao": "20/08/2009", "links": links_do_imovel(2)},
     ]
 
     mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE tipo = %s", (tipo,))
@@ -284,8 +311,8 @@ def test_buscar_imoveis_por_cidade(mock_conectar_banco, client, cidade):
 
     assert response.status_code == 200
     assert response.get_json() == [
-        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": cidade, "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002"},
-        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": cidade, "cep": "374689", "tipo": "casa", "valor": "3000000", "data_aquisicao": "20/08/2009"},
+        {"id": 1, "logradouro": "x", "tipo_logradouro": "Rua", "bairro": "Conceição", "cidade": cidade, "cep": "278383", "tipo": "casa", "valor": "20000", "data_aquisicao": "13/04/2002", "links": links_do_imovel(1)},
+        {"id": 2, "logradouro": "y", "tipo_logradouro": "Avenida", "bairro": "Marina", "cidade": cidade, "cep": "374689", "tipo": "casa", "valor": "3000000", "data_aquisicao": "20/08/2009", "links": links_do_imovel(2)},
     ]
 
     mock_cursor.execute.assert_called_once_with("SELECT * FROM imoveis WHERE cidade = %s", (cidade,))

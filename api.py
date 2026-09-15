@@ -14,9 +14,28 @@ CAMPOS_IMOVEL = [
     "valor",
     "data_aquisicao",
 ]
+
+
+def build_imovel_links(id):
+    return [
+        {"rel": "self", "href": f"/imoveis/{id}", "method": "GET"},
+        {"rel": "update", "href": f"/imoveis/{id}", "method": "PUT"},
+        {"rel": "delete", "href": f"/imoveis/{id}", "method": "DELETE"},
+        {"rel": "collection", "href": "/imoveis", "method": "GET"},
+    ]
+
+
+def build_collection_links():
+    return [
+        {"rel": "self", "href": "/imoveis", "method": "GET"},
+        {"rel": "create", "href": "/imoveis", "method": "POST"},
+    ]
+
+
 def row_to_imovel_dict(row):
+    imovel_id = row[0]
     return {
-        "id": row[0],
+        "id": imovel_id,
         "logradouro": row[1],
         "tipo_logradouro": row[2],
         "bairro": row[3],
@@ -25,7 +44,14 @@ def row_to_imovel_dict(row):
         "tipo": row[6],
         "valor": row[7],
         "data_aquisicao": row[8],
+        "links": build_imovel_links(imovel_id),
     }
+
+
+@app.route("/", methods=["GET"])
+def index():
+    """Ponto de entrada da API: lista os recursos e ações disponíveis (HATEOAS)."""
+    return jsonify({"links": [{"rel": "self", "href": "/", "method": "GET"}] + build_collection_links()}), 200
 
 
 @app.route("/imoveis", methods=["GET"])
@@ -83,7 +109,11 @@ def criar_imovel():
     novo_id = cursor.lastrowid
     cursor.close()
     conn.close()
-    return jsonify({"id": novo_id}), 201
+
+    response = jsonify({"id": novo_id, "links": build_imovel_links(novo_id)})
+    response.status_code = 201
+    response.headers["Location"] = f"/imoveis/{novo_id}"
+    return response
 
 
 @app.route("/imoveis/<int:id>", methods=["PUT"])
@@ -107,7 +137,7 @@ def atualizar_imovel(id):
 
     if not encontrado:
         return jsonify({"erro": "Imóvel não encontrado"}), 404
-    return jsonify({"mensagem": "Imóvel atualizado com sucesso"}), 200
+    return jsonify({"mensagem": "Imóvel atualizado com sucesso", "links": build_imovel_links(id)}), 200
 
 
 @app.route("/imoveis/<int:id>", methods=["DELETE"])
@@ -123,7 +153,7 @@ def deletar_imovel(id):
 
     if not encontrado:
         return jsonify({"erro": "Imóvel não encontrado"}), 404
-    return jsonify({"mensagem": "Imóvel excluído com sucesso"}), 200
+    return jsonify({"mensagem": "Imóvel excluído com sucesso", "links": build_collection_links()}), 200
 
 
 if __name__ == "__main__":
