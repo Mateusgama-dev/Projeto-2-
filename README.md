@@ -4,7 +4,7 @@ API REST desenvolvida em Flask para gerenciamento de um cadastro de imóveis, co
 
 ## API em produção
 
-> 🔗 **URL da API hospedada na AWS:** _a preencher assim que o deploy for concluído_
+> 🔗 **http://50.19.144.117/imoveis** _a preencher assim que o deploy for concluído_
 
 ## Funcionalidades
 
